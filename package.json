@@ -1,0 +1,19 @@
+{
+  "name": "icg-task-queue",
+  "version": "0.2.1",
+  "description": "A simple, API-backed task queueing component",
+  "main": "task-queue.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/ICGGroup/node-task-queue.git"
+  },
+  "author": "Trimeego",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ICGGroup/node-task-queue/issues"
+  },
+  "homepage": "https://github.com/ICGGroup/node-task-queue"
+}
