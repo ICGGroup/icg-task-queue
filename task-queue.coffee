@@ -1,9 +1,12 @@
+domain = require("domain")
 http = require("http")
 url = require("url")
 path = require("path")
 _ = require("lodash")
 async = require("async")
 oi = require("oibackoff")
+
+NO_WORK_ERROR = "No work available to process"
 
 saveTask = (taskResourceUrl, task, secToken, callback)->
 
@@ -67,7 +70,7 @@ fetchTask = (taskResourceUrl, taskType, secToken, callback)->
         if fetch_response.statusCode is 200
           taskObj = JSON.parse(data)
           if _.isEmpty(taskObj)
-            callback("No work to process.")
+            callback(NO_WORK_ERROR)
           else
             callback(null, taskObj)
         else
@@ -136,9 +139,10 @@ class Task
 class TaskQueue
   constructor: (options) ->
     if options
-
       @taskResourceUrl = options.taskResourceUrl
       @secToken = options.secToken
+      @log = options.log
+
     if not @taskResourceUrl or not @secToken
       throw new Error("constructor requires taskResourceUrl and secToken options")
 
@@ -150,61 +154,78 @@ class TaskQueue
     fetchTask @taskResourceUrl, taskType, @secToken, cb
 
   process: (taskType, options, fn)=>
-    options ||= {}
-    options.concurrency ||= 1
-    doFetch = ()=>
-      maxDelay = 30
-      getWork = (cb)=>
-        # console.log(@taskResourceUrl, taskType, @secToken)
-        fetchTask @taskResourceUrl, taskType, @secToken, cb
+    processDomain = domain.create()
+    log = options.log || @log
 
-      backoff = oi.backoff
-        algorithm  : 'fibonacci',
-        delayRatio : 1,
-        maxDelay   : maxDelay,
-        maxTries: 1000000
+    processDomain.on "error", (err)->
+      # the service will stop when an uptapped error is encountered
+      log?.error("Untrapped Error", err)
+      # restart after 120 seconds
+      setTimeout ()->
+        initProcess()
+      , 10000
 
-      intermediate = (err, tries, delay)->
-        if err and err isnt "No work to process."
-          true
-        else
-          try
-            if maxDelay < delay
-              delay = maxDelay
-            # console.log({backoff:'fibonacci', tries: tries, delay:delay})
-          catch e
-            # console.log(e, "Error calculating intermediate stats")
-          finally
-            true
-
-      backoff getWork, intermediate, (err, task)->
-        asyncQ.push(task)
-
-    asyncQ = async.queue (task, callback)=>
-      wrappedTask = new Task(task.taskType, task.taskData, @taskResourceUrl, @secToken, task)
-      fn.apply @, [wrappedTask, (err, resultTask)->
-        if err
-          # set error and save
-          wrappedTask.root.error = err.message || err
-          wrappedTask.save(callback)
-        else
-          # complete and save
-          wrappedTask.complete().save(callback)
-      ]
-    , options.concurrency
-
-    asyncQ.empty = doFetch
-
-    doFetch()
-    procObj =
-      pause: asyncQ.pause
-      resume: asyncQ.resume
-      kill: asyncQ.kill
-      stop: asyncQ.kill
-      drain: asyncQ.drain
+    initProcess = ()=>
+      processDomain.run ()=>
+        options ||= {}
+        options.concurrency ||= 1
+        options.maxDelay ||= 300
+        doFetch = ()=>
 
 
+          getWork = (cb)=>
+            # console.log(@taskResourceUrl, taskType, @secToken)
+            fetchTask @taskResourceUrl, taskType, @secToken, cb
 
+          backoff = oi.backoff
+            algorithm  : 'fibonacci',
+            delayRatio : 1,
+            maxDelay   : options.maxDelay,
+            maxTries: 1000000
+
+          intermediate = (err, tries, delay)->
+            console.log(err, tries, delay)
+            if err and err isnt NO_WORK_ERROR
+              true
+            else
+              try
+                if options.maxDelay < delay
+                  delay = options.maxDelay
+              catch e
+                log?.warn(e, "Error calculating intermediate stats")
+
+              log?.info("Backing off after #{tries} tries with delay #{delay}")
+              true
+
+          backoff getWork, intermediate, (err, task)->
+            asyncQ.push(task)
+
+        asyncQ = async.queue (task, callback)=>
+          wrappedTask = new Task(task.taskType, task.taskData, @taskResourceUrl, @secToken, task)
+          fn.apply @, [wrappedTask, (err, resultTask)->
+            if err
+              # set error and save
+              wrappedTask.root.error = err.message || err
+              wrappedTask.save(callback)
+            else
+              # complete and save
+              wrappedTask.complete().save(callback)
+          ]
+
+        , options.concurrency
+
+        asyncQ.empty = doFetch
+
+        doFetch()
+        procObj =
+          pause: asyncQ.pause
+          resume: asyncQ.resume
+          kill: asyncQ.kill
+          stop: asyncQ.kill
+          drain: asyncQ.drain
+
+
+    initProcess()
 
 
 
