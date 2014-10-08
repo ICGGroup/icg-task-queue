@@ -235,7 +235,6 @@
               });
               intermediate = function(err, tries, delay) {
                 var e;
-                console.log(err, tries, delay);
                 if (err && err !== NO_WORK_ERROR) {
                   return true;
                 } else {
