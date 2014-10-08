@@ -1,6 +1,6 @@
 {
   "name": "icg-task-queue",
-  "version": "0.2.3",
+  "version": "0.2.5",
   "description": "A simple, API-backed task queueing component",
   "main": "task-queue.js",
   "scripts": {

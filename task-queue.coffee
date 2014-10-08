@@ -184,7 +184,6 @@ class TaskQueue
             maxTries: 1000000
 
           intermediate = (err, tries, delay)->
-            console.log(err, tries, delay)
             if err and err isnt NO_WORK_ERROR
               true
             else
