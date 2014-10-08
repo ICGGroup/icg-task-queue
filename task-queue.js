@@ -208,12 +208,16 @@
       processDomain = domain.create();
       log = options.log || this.log;
       processDomain.on("error", function(err) {
-        if (log != null) {
-          log.error("Untrapped Error", err);
+        if (options.rethrowErrors) {
+          throw err;
+        } else {
+          if (log != null) {
+            log.error("Untrapped Error", err);
+          }
+          return setTimeout(function() {
+            return initProcess();
+          }, 10000);
         }
-        return setTimeout(function() {
-          return initProcess();
-        }, 10000);
       });
       initProcess = (function(_this) {
         return function() {

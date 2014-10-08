@@ -159,11 +159,14 @@ class TaskQueue
 
     processDomain.on "error", (err)->
       # the service will stop when an uptapped error is encountered
-      log?.error("Untrapped Error", err)
-      # restart after 120 seconds
-      setTimeout ()->
-        initProcess()
-      , 10000
+      if options.rethrowErrors
+        throw err
+      else
+        log?.error("Untrapped Error", err)
+        # restart after 120 seconds
+        setTimeout ()->
+          initProcess()
+        , 10000
 
     initProcess = ()=>
       processDomain.run ()=>
