@@ -43,10 +43,18 @@ saveTask = (taskResourceUrl, task, secToken, callback)->
 
   save_request.end()
 
+
 fetchTask = (taskResourceUrl, taskType, secToken, callback)->
   taskUrl = url.parse(taskResourceUrl)
   taskUrl.path = taskUrl.path + "/dequeue/" + taskType
+  fetch(taskUrl, secToken, callback)
 
+fetchTaskLimit = (taskResourceUrl, taskType, limit, secToken, callback)->
+  taskUrl = url.parse(taskResourceUrl)
+  taskUrl.path = taskUrl.path + "/dequeue/" + taskType + "?limit=" + limit
+  fetch(taskUrl, secToken, callback)
+
+fetch = (taskUrl, secToken, callback)->
   headers =
     'secToken': secToken
     'Content-Type': 'application/json'
@@ -58,6 +66,8 @@ fetchTask = (taskResourceUrl, taskType, secToken, callback)->
     port: taskUrl.port
     path: taskUrl.path
     method: "GET"
+
+
 
   fetch_request = http.request options, (fetch_response) ->
     data = ""
@@ -152,6 +162,9 @@ class TaskQueue
 
   dequeue: (taskType, cb)=>
     fetchTask @taskResourceUrl, taskType, @secToken, cb
+
+  dequeueLimit: (taskType, limit, cb)=>
+    fetchTaskLimit @taskResourceUrl, taskType, limit, @secToken, cb
 
   process: (taskType, options, fn)=>
     processDomain = domain.create()
