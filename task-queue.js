@@ -94,7 +94,7 @@
         if (callback) {
           if (fetch_response.statusCode === 200) {
             taskObj = JSON.parse(data);
-            if (_.isEmpty(taskObj)) {
+            if (!taskObj || _.isEmpty(taskObj) || (taskObj.hasOwnProperty("task") && _.isEmpty(taskObj.task))) {
               return callback(NO_WORK_ERROR);
             } else {
               return callback(null, taskObj);
@@ -281,17 +281,21 @@
             };
             asyncQ = async.queue(function(task, callback) {
               var wrappedTask;
-              wrappedTask = new Task(task.taskType, task.taskData, _this.taskResourceUrl, _this.secToken, task);
-              return fn.apply(_this, [
-                wrappedTask, function(err, resultTask) {
-                  if (err) {
-                    wrappedTask.root.error = err.message || err;
-                    return wrappedTask.save(callback);
-                  } else {
-                    return wrappedTask.complete().save(callback);
+              if (_.isEmpty(task)) {
+                return callback(NO_WORK_ERROR);
+              } else {
+                wrappedTask = new Task(task.taskType, task.taskData, _this.taskResourceUrl, _this.secToken, task);
+                return fn.apply(_this, [
+                  wrappedTask, function(err, resultTask) {
+                    if (err) {
+                      wrappedTask.root.error = err.message || err;
+                      return wrappedTask.save(callback);
+                    } else {
+                      return wrappedTask.complete().save(callback);
+                    }
                   }
-                }
-              ]);
+                ]);
+              }
             }, options.concurrency);
             asyncQ.empty = doFetch;
             doFetch();
