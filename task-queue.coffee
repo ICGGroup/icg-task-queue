@@ -79,7 +79,7 @@ fetch = (taskUrl, secToken, callback)->
       if callback
         if fetch_response.statusCode is 200
           taskObj = JSON.parse(data)
-          if _.isEmpty(taskObj)
+          if not taskObj or _.isEmpty(taskObj) or (taskObj.hasOwnProperty("task") and _.isEmpty(taskObj.task))
             callback(NO_WORK_ERROR)
           else
             callback(null, taskObj)
@@ -216,16 +216,19 @@ class TaskQueue
             asyncQ.push(task)
 
         asyncQ = async.queue (task, callback)=>
-          wrappedTask = new Task(task.taskType, task.taskData, @taskResourceUrl, @secToken, task)
-          fn.apply @, [wrappedTask, (err, resultTask)->
-            if err
-              # set error and save
-              wrappedTask.root.error = err.message || err
-              wrappedTask.save(callback)
-            else
-              # complete and save
-              wrappedTask.complete().save(callback)
-          ]
+          if _.isEmpty(task)
+            callback(NO_WORK_ERROR)
+          else
+            wrappedTask = new Task(task.taskType, task.taskData, @taskResourceUrl, @secToken, task)
+            fn.apply @, [wrappedTask, (err, resultTask)->
+              if err
+                # set error and save
+                wrappedTask.root.error = err.message || err
+                wrappedTask.save(callback)
+              else
+                # complete and save
+                wrappedTask.complete().save(callback)
+            ]
 
         , options.concurrency
 
