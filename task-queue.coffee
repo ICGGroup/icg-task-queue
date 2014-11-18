@@ -110,7 +110,7 @@ class Task
     @root
 
   delay: (val)=>
-    @root.delay = val
+    @root.delayedUntil = val
     return @
 
   priority: (val)=>

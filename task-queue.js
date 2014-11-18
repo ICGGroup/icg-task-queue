@@ -142,7 +142,7 @@
     }
 
     Task.prototype.delay = function(val) {
-      this.root.delay = val;
+      this.root.delayedUntil = val;
       return this;
     };
 
