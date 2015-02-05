@@ -109,6 +109,10 @@ class Task
       @root = _.extend(@root, options.task)
     @root
 
+  state: (val)=>
+    @root.state = val
+    return @
+
   delay: (val)=>
     @root.delayedUntil = val
     return @
